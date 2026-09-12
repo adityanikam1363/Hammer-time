@@ -1,0 +1,12 @@
+path: ./dataset
+
+train: images/train
+val: images/val
+
+names:
+  0: car
+  1: white_boundary
+  2: wheel_front_left
+  3: wheel_front_right
+  4: wheel_rear_left
+  5: wheel_rear_right
