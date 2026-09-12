@@ -5,6 +5,7 @@ import {
   detectViolations,
   evalQuadratic,
   fitQuadratic,
+  frontTireViolation,
   turnForTimestamp,
   type RawFrame,
 } from "./geometry";
@@ -60,6 +61,12 @@ const straightFrame = (
 });
 
 describe("computeFrame", () => {
+  it("uses the front two tires as the validation source", () => {
+    const f = computeFrame(straightFrame(0, 0, 130, 934));
+    expect(frontTireViolation(f)).toEqual({ side: "right", magnitude: 34 });
+    expect(f.breached).toBe(true);
+  });
+
   it("computes hand-checked offsets and normalises geometry", () => {
     const f = computeFrame(straightFrame(0, 0, 130, 870));
     expect(f.offsetLeftPx).toBeCloseTo(30, 6);

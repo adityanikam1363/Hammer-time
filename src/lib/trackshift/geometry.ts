@@ -139,6 +139,21 @@ export function computeFrame(raw: RawFrame): ComputedFrame {
   const residualScale = Math.max(raw.frameWidth / 50, 1e-6);
   const fitResidual = clamp01(((leftFit.rms + rightFit.rms) / 2) / residualScale);
 
+  const breach = frontTireViolation({
+    frameIndex: raw.frameIndex,
+    timestampSec: raw.timestampSec,
+    leftBoundary: raw.leftBoundaryPx.map(norm),
+    rightBoundary: raw.rightBoundaryPx.map(norm),
+    tireLeft: norm(raw.tireLeftPx),
+    tireRight: norm(raw.tireRightPx),
+    offsetLeftPx,
+    offsetRightPx,
+    breached: false,
+    segConfidence: clamp01(raw.segConfidence),
+    fitResidual,
+    frameWidth: raw.frameWidth,
+  });
+
   return {
     frameIndex: raw.frameIndex,
     timestampSec: raw.timestampSec,
@@ -148,18 +163,29 @@ export function computeFrame(raw: RawFrame): ComputedFrame {
     tireRight: norm(raw.tireRightPx),
     offsetLeftPx,
     offsetRightPx,
-    breached: offsetLeftPx < 0 || offsetRightPx > 0,
+    breached: breach.magnitude > 0,
     segConfidence: clamp01(raw.segConfidence),
     fitResidual,
     frameWidth: raw.frameWidth,
   };
 }
 
-/** Signed breach magnitude and side for one frame (0 when the frame is clean). */
-export function breachOf(frame: ComputedFrame): { side: "left" | "right"; magnitude: number } {
+/**
+ * Uses the front two tire positions as the validation source.
+ * A tie is broken toward the right side to preserve the current behavior for
+ * balanced or ambiguous frame geometry.
+ */
+export function frontTireViolation(frame: ComputedFrame): { side: "left" | "right"; magnitude: number } {
   const left = frame.offsetLeftPx < 0 ? Math.abs(frame.offsetLeftPx) : 0;
   const right = frame.offsetRightPx > 0 ? frame.offsetRightPx : 0;
-  return right >= left ? { side: "right", magnitude: right } : { side: "left", magnitude: left };
+
+  if (right >= left) return { side: "right", magnitude: right };
+  return { side: "left", magnitude: left };
+}
+
+/** Signed breach magnitude and side for one frame (0 when the frame is clean). */
+export function breachOf(frame: ComputedFrame): { side: "left" | "right"; magnitude: number } {
+  return frontTireViolation(frame);
 }
 
 export interface DetectedViolation {
